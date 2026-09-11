@@ -2,6 +2,8 @@ import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config, isDeveloper } from './config';
 import { Command } from './types';
 import { loadCommands } from './handlers/commandHandler';
+import fs from 'fs';
+import path from 'path';
 
 // Extension du type Client pour inclure la collection de commandes
 declare module 'discord.js' {
@@ -10,12 +12,39 @@ declare module 'discord.js' {
   }
 }
 
+const PREFIX = '!';
+
+// Chemin vers les commandes personnalisées du dashboard
+const CUSTOM_COMMANDS_PATH = path.join(__dirname, '../../web/backend/data/custom-commands.json');
+
+// Charger les commandes personnalisées
+function loadCustomCommands(): any[] {
+  try {
+    if (fs.existsSync(CUSTOM_COMMANDS_PATH)) {
+      const data = fs.readFileSync(CUSTOM_COMMANDS_PATH, 'utf-8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('⚠️ Impossible de charger les commandes personnalisées:', error);
+  }
+  return [];
+}
+
+// Remplacer les variables dans la réponse
+function parseResponse(response: string, context: { user: string, server: string, channel: string }): string {
+  return response
+    .replace(/\{user\}/g, context.user)
+    .replace(/\{server\}/g, context.server)
+    .replace(/\{channel\}/g, context.channel);
+}
+
 // Création du client Discord avec les intents nécessaires
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
@@ -75,6 +104,45 @@ client.on(Events.InteractionCreate, async (interaction) => {
       await interaction.reply(errorMessage);
     }
   }
+});
+
+// Événement: Message créé (commandes avec préfixe !)
+client.on(Events.MessageCreate, async (message) => {
+  // Ignorer les bots et les messages sans préfixe
+  if (message.author.bot) return;
+  if (!message.content.startsWith(PREFIX)) return;
+
+  // Parser le nom de la commande et les arguments
+  const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
+  const commandName = args.shift()?.toLowerCase();
+
+  if (!commandName) return;
+
+  // Charger les commandes personnalisées
+  const customCommands = loadCustomCommands();
+  const customCommand = customCommands.find(
+    (cmd) => cmd.name.toLowerCase() === commandName && cmd.enabled
+  );
+
+  if (customCommand) {
+    try {
+      const response = parseResponse(customCommand.response, {
+        user: `<@${message.author.id}>`,
+        server: message.guild?.name || 'Serveur',
+        channel: `<#${message.channel.id}>`,
+      });
+
+      await message.reply(response);
+      console.log(`📝 ${message.author.tag} a exécuté !${commandName} dans ${message.guild?.name}`);
+    } catch (error) {
+      console.error(`❌ Erreur lors de l'exécution de !${commandName}:`, error);
+      await message.reply('❌ Une erreur s\'est produite lors de l\'exécution de cette commande.');
+    }
+    return;
+  }
+
+  // Commande non trouvée
+  // On ne répond rien pour éviter le spam si quelqu'un utilise ! pour autre chose
 });
 
 // Événement: Erreur
