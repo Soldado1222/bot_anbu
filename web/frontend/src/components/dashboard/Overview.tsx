@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import axios from '../../lib/axios';
 import { useBotStatus } from '../../contexts/BotStatusContext';
 import { useWebSocket } from '../../contexts/WebSocketContext';
+import { useNavigate } from 'react-router-dom';
 import { Server, Users, Hash, Activity, Clock, Cpu, Zap, Terminal } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import clsx from 'clsx';
@@ -21,6 +22,8 @@ export default function Overview() {
   const [pingHistory, setPingHistory] = useState<{ time: string; ping: number }[]>([]);
   const { botStatus } = useBotStatus();
   const { lastMessage } = useWebSocket();
+
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchStats();
@@ -169,10 +172,10 @@ export default function Overview() {
             { label: 'Contrôles', icon: Activity, href: '/controls', color: 'text-discord-green', bg: 'bg-discord-green/10 hover:bg-discord-green/20' },
             { label: 'Serveurs', icon: Server, href: '/servers', color: 'text-discord-fuchsia', bg: 'bg-discord-fuchsia/10 hover:bg-discord-fuchsia/20' },
           ].map(item => (
-            <a key={item.label} href={item.href} className={clsx('flex flex-col items-center gap-2 p-4 rounded-xl transition cursor-pointer', item.bg)}>
+            <button key={item.label} onClick={() => navigate(item.href)} className={clsx('flex flex-col items-center gap-2 p-4 rounded-xl transition cursor-pointer w-full', item.bg)}>
               <item.icon size={22} className={item.color} />
               <span className="text-white text-sm font-medium">{item.label}</span>
-            </a>
+            </button>
           ))}
         </div>
       </div>
