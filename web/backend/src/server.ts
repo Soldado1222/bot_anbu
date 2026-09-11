@@ -87,6 +87,19 @@ export const isAdmin = (req: express.Request, res: express.Response, next: expre
   res.status(403).json({ error: 'Accès refusé - Droits administrateur requis' });
 };
 
+// Route interne pour le bot (sans auth)
+app.get('/internal/commands', async (req, res) => {
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const filePath = path.join(process.cwd(), 'data', 'custom-commands.json');
+    const data = await fs.readFile(filePath, 'utf-8');
+    res.json(JSON.parse(data));
+  } catch {
+    res.json([]);
+  }
+});
+
 // Routes
 app.use('/auth', createAuthRoutes());
 app.use('/api/bot', isAuthenticated, createBotRoutes(discordClient));

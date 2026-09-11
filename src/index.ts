@@ -2,8 +2,8 @@ import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config, isDeveloper } from './config';
 import { Command } from './types';
 import { loadCommands } from './handlers/commandHandler';
-import fs from 'fs';
-import path from 'path';
+import https from 'https';
+import http from 'http';
 
 // Extension du type Client pour inclure la collection de commandes
 declare module 'discord.js' {
@@ -14,20 +14,42 @@ declare module 'discord.js' {
 
 const PREFIX = '!';
 
-// Chemin vers les commandes personnalisées du dashboard
-const CUSTOM_COMMANDS_PATH = path.join(__dirname, '../../web/backend/data/custom-commands.json');
+// URL de l'API backend (même service sur Render, ou localhost en dev)
+const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
 
-// Charger les commandes personnalisées
-function loadCustomCommands(): any[] {
-  try {
-    if (fs.existsSync(CUSTOM_COMMANDS_PATH)) {
-      const data = fs.readFileSync(CUSTOM_COMMANDS_PATH, 'utf-8');
-      return JSON.parse(data);
-    }
-  } catch (error) {
-    console.error('⚠️ Impossible de charger les commandes personnalisées:', error);
+// Cache des commandes pour éviter trop de requêtes
+let customCommandsCache: any[] = [];
+let lastFetch = 0;
+const CACHE_TTL = 30000; // 30 secondes
+
+// Récupérer les commandes custom depuis l'API backend
+async function fetchCustomCommands(): Promise<any[]> {
+  const now = Date.now();
+  if (now - lastFetch < CACHE_TTL && customCommandsCache.length >= 0 && lastFetch > 0) {
+    return customCommandsCache;
   }
-  return [];
+
+  return new Promise((resolve) => {
+    const url = `${BACKEND_URL}/internal/commands`;
+    const client = url.startsWith('https') ? https : http;
+
+    const req = client.get(url, { timeout: 5000 }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          customCommandsCache = JSON.parse(data);
+          lastFetch = Date.now();
+          resolve(customCommandsCache);
+        } catch {
+          resolve(customCommandsCache);
+        }
+      });
+    });
+
+    req.on('error', () => resolve(customCommandsCache));
+    req.on('timeout', () => { req.destroy(); resolve(customCommandsCache); });
+  });
 }
 
 // Remplacer les variables dans la réponse
@@ -119,7 +141,7 @@ client.on(Events.MessageCreate, async (message) => {
   if (!commandName) return;
 
   // Charger les commandes personnalisées
-  const customCommands = loadCustomCommands();
+  const customCommands = await fetchCustomCommands();
   const customCommand = customCommands.find(
     (cmd) => cmd.name.toLowerCase() === commandName && cmd.enabled
   );
