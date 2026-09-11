@@ -12,52 +12,16 @@ declare module 'discord.js' {
   }
 }
 
-const PREFIX = '!';
-
 // URL de l'API backend (même service sur Render, ou localhost en dev)
 const BACKEND_URL = process.env.BACKEND_URL || 'https://bot-anbu.onrender.com';
-
-// Cache des commandes pour éviter trop de requêtes
-let customCommandsCache: any[] = [];
-let lastFetch = 0;
-const CACHE_TTL = 30000; // 30 secondes
 
 // Cache des automatisations
 let automationsCache: any = null;
 let lastAutomationsFetch = 0;
+const CACHE_TTL = 30000; // 30 secondes
 
 // Cache XP pour le level system (userId -> { xp, level, lastMessage })
 const userXP = new Map<string, { xp: number; level: number; lastMessage: number }>();
-
-// Récupérer les commandes custom depuis l'API backend
-async function fetchCustomCommands(): Promise<any[]> {
-  const now = Date.now();
-  if (now - lastFetch < CACHE_TTL && customCommandsCache.length >= 0 && lastFetch > 0) {
-    return customCommandsCache;
-  }
-
-  return new Promise((resolve) => {
-    const url = `${BACKEND_URL}/internal/commands`;
-    const client = url.startsWith('https') ? https : http;
-
-    const req = client.get(url, { timeout: 5000 }, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          customCommandsCache = JSON.parse(data);
-          lastFetch = Date.now();
-          resolve(customCommandsCache);
-        } catch {
-          resolve(customCommandsCache);
-        }
-      });
-    });
-
-    req.on('error', () => resolve(customCommandsCache));
-    req.on('timeout', () => { req.destroy(); resolve(customCommandsCache); });
-  });
-}
 
 // Récupérer les automatisations depuis l'API backend
 async function fetchAutomations(): Promise<any> {
@@ -77,6 +41,7 @@ async function fetchAutomations(): Promise<any> {
         try {
           automationsCache = JSON.parse(data);
           lastAutomationsFetch = Date.now();
+          console.log('✅ Automatisations récupérées depuis le backend');
           resolve(automationsCache);
         } catch {
           resolve(automationsCache || {});
@@ -87,14 +52,6 @@ async function fetchAutomations(): Promise<any> {
     req.on('error', () => resolve(automationsCache || {}));
     req.on('timeout', () => { req.destroy(); resolve(automationsCache || {}); });
   });
-}
-
-// Remplacer les variables dans la réponse
-function parseResponse(response: string, context: { user: string, server: string, channel: string }): string {
-  return response
-    .replace(/\{user\}/g, context.user)
-    .replace(/\{server\}/g, context.server)
-    .replace(/\{channel\}/g, context.channel);
 }
 
 // Création du client Discord avec les intents nécessaires
@@ -119,8 +76,15 @@ client.once(Events.ClientReady, (c) => {
   
   // Définir le statut du bot
   c.user.setPresence({
-    activities: [{ name: 'les commandes ! | Bot Communautaire' }],
+    activities: [{ name: 'les commandes slash / | Bot Communautaire' }],
     status: 'online',
+  });
+  
+  // Précharger les automatisations au démarrage
+  fetchAutomations().then(() => {
+    console.log('🔄 Automatisations chargées');
+  }).catch(() => {
+    console.error('⚠️ Impossible de charger les automatisations au démarrage');
   });
 });
 
@@ -242,7 +206,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// Événement: Message créé (commandes avec préfixe !)
+// Événement: Message créé (automod + level system)
 client.on(Events.MessageCreate, async (message) => {
   // Ignorer les bots
   if (message.author.bot) return;
@@ -254,9 +218,6 @@ client.on(Events.MessageCreate, async (message) => {
     if (automations.automod?.enabled && message.guild) {
       let shouldDelete = false;
       let reason = '';
-
-      // Anti-spam (messages identiques rapides - détection simple)
-      // Note: une vraie détection anti-spam nécessiterait un cache de messages par user
 
       // Anti-liens
       if (automations.automod.antiLinks) {
@@ -295,7 +256,7 @@ client.on(Events.MessageCreate, async (message) => {
         } catch (error) {
           console.error('❌ Erreur automod:', error);
         }
-        return; // Ne pas traiter les commandes si le message est supprimé
+        return;
       }
     }
 
@@ -340,41 +301,6 @@ client.on(Events.MessageCreate, async (message) => {
   } catch (error) {
     console.error('❌ Erreur automatisations:', error);
   }
-
-  // ===== COMMANDES AVEC PRÉFIXE ! =====
-  if (!message.content.startsWith(PREFIX)) return;
-
-  // Parser le nom de la commande et les arguments
-  const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
-  const commandName = args.shift()?.toLowerCase();
-
-  if (!commandName) return;
-
-  // Charger les commandes personnalisées
-  const customCommands = await fetchCustomCommands();
-  const customCommand = customCommands.find(
-    (cmd) => cmd.name.toLowerCase() === commandName && cmd.enabled
-  );
-
-  if (customCommand) {
-    try {
-      const response = parseResponse(customCommand.response, {
-        user: `<@${message.author.id}>`,
-        server: message.guild?.name || 'Serveur',
-        channel: `<#${message.channel.id}>`,
-      });
-
-      await message.reply(response);
-      console.log(`📝 ${message.author.tag} a exécuté !${commandName} dans ${message.guild?.name}`);
-    } catch (error) {
-      console.error(`❌ Erreur lors de l'exécution de !${commandName}:`, error);
-      await message.reply('❌ Une erreur s\'est produite lors de l\'exécution de cette commande.');
-    }
-    return;
-  }
-
-  // Commande non trouvée
-  // On ne répond rien pour éviter le spam si quelqu'un utilise ! pour autre chose
 });
 
 // Événement: Erreur
