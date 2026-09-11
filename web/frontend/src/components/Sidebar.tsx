@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom';
-import { Home, Server, FileText, Settings, Sliders, Bot } from 'lucide-react';
+import { Home, Server, FileText, Settings, Sliders, Bot, Terminal } from 'lucide-react';
 import clsx from 'clsx';
 
 const navigation = [
   { name: 'Vue d\'ensemble', href: '/', icon: Home },
   { name: 'Serveurs', href: '/servers', icon: Server },
+  { name: 'Commandes', href: '/commands', icon: Terminal },
   { name: 'Logs', href: '/logs', icon: FileText },
   { name: 'Contrôles', href: '/controls', icon: Sliders },
   { name: 'Paramètres', href: '/settings', icon: Settings },

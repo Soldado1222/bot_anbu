@@ -8,6 +8,7 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import { createBotRoutes } from './routes/bot';
 import { createStatsRoutes } from './routes/stats';
 import { createAuthRoutes } from './routes/auth';
+import { createCommandsRoutes } from './routes/commands';
 import { setupWebSocket } from './websocket';
 
 dotenv.config();
@@ -88,6 +89,7 @@ export const isAdmin = (req: express.Request, res: express.Response, next: expre
 app.use('/auth', createAuthRoutes());
 app.use('/api/bot', isAuthenticated, createBotRoutes(discordClient));
 app.use('/api/stats', isAuthenticated, createStatsRoutes(discordClient));
+app.use('/api/commands', isAuthenticated, createCommandsRoutes(discordClient));
 
 // Route de santé
 app.get('/health', (req, res) => {

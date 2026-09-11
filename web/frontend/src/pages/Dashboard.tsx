@@ -5,6 +5,7 @@ import Overview from '../components/dashboard/Overview';
 import Servers from '../components/dashboard/Servers';
 import Logs from '../components/dashboard/Logs';
 import Controls from '../components/dashboard/Controls';
+import Commands from '../components/dashboard/Commands';
 import Settings from '../components/dashboard/Settings';
 
 export default function Dashboard() {
@@ -21,6 +22,7 @@ export default function Dashboard() {
             <Route path="/servers" element={<Servers />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/controls" element={<Controls />} />
+            <Route path="/commands" element={<Commands />} />
             <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>
