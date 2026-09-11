@@ -1,0 +1,17 @@
+# Configuration Render pour le backend
+services:
+  - type: web
+    name: bot-dashboard-backend
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # Les autres variables sont à configurer manuellement dans Render Dashboard
+      # pour la sécurité (ne pas les mettre dans le code)

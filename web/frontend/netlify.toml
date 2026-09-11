@@ -1,0 +1,33 @@
+[build]
+  # Dossier de base
+  base = "web/frontend"
+  
+  # Commande de build
+  command = "npm run build"
+  
+  # Dossier de publication
+  publish = "build"
+
+# Configuration des redirects pour React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Headers de sécurité
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Cache pour les assets
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Variables d'environnement (à configurer dans Netlify UI)
+# VITE_API_URL = "https://votre-backend.onrender.com"
