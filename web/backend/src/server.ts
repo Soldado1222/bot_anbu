@@ -22,6 +22,7 @@ const discordClient = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
@@ -97,6 +98,25 @@ app.get('/health', (req, res) => {
     status: 'ok',
     botConnected: discordClient.isReady(),
     timestamp: new Date().toISOString(),
+  });
+});
+
+// Route de debug pour voir les serveurs
+app.get('/debug/guilds', (req, res) => {
+  if (!discordClient.isReady()) {
+    return res.status(503).json({ error: 'Bot non connecté' });
+  }
+
+  const guilds = discordClient.guilds.cache.map(guild => ({
+    id: guild.id,
+    name: guild.name,
+    memberCount: guild.memberCount,
+  }));
+
+  res.json({
+    botReady: discordClient.isReady(),
+    guildCount: discordClient.guilds.cache.size,
+    guilds: guilds,
   });
 });
 
