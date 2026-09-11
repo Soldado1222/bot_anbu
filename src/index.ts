@@ -15,7 +15,7 @@ declare module 'discord.js' {
 const PREFIX = '!';
 
 // URL de l'API backend (même service sur Render, ou localhost en dev)
-const BACKEND_URL = process.env.BACKEND_URL || 'http://localhost:3001';
+const BACKEND_URL = process.env.BACKEND_URL || 'https://bot-anbu.onrender.com';
 
 // Cache des commandes pour éviter trop de requêtes
 let customCommandsCache: any[] = [];
