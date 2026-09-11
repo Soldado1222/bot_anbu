@@ -22,6 +22,13 @@ let customCommandsCache: any[] = [];
 let lastFetch = 0;
 const CACHE_TTL = 30000; // 30 secondes
 
+// Cache des automatisations
+let automationsCache: any = null;
+let lastAutomationsFetch = 0;
+
+// Cache XP pour le level system (userId -> { xp, level, lastMessage })
+const userXP = new Map<string, { xp: number; level: number; lastMessage: number }>();
+
 // Récupérer les commandes custom depuis l'API backend
 async function fetchCustomCommands(): Promise<any[]> {
   const now = Date.now();
@@ -49,6 +56,36 @@ async function fetchCustomCommands(): Promise<any[]> {
 
     req.on('error', () => resolve(customCommandsCache));
     req.on('timeout', () => { req.destroy(); resolve(customCommandsCache); });
+  });
+}
+
+// Récupérer les automatisations depuis l'API backend
+async function fetchAutomations(): Promise<any> {
+  const now = Date.now();
+  if (now - lastAutomationsFetch < CACHE_TTL && automationsCache && lastAutomationsFetch > 0) {
+    return automationsCache;
+  }
+
+  return new Promise((resolve) => {
+    const url = `${BACKEND_URL}/internal/automations`;
+    const client = url.startsWith('https') ? https : http;
+
+    const req = client.get(url, { timeout: 5000 }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          automationsCache = JSON.parse(data);
+          lastAutomationsFetch = Date.now();
+          resolve(automationsCache);
+        } catch {
+          resolve(automationsCache || {});
+        }
+      });
+    });
+
+    req.on('error', () => resolve(automationsCache || {}));
+    req.on('timeout', () => { req.destroy(); resolve(automationsCache || {}); });
   });
 }
 
@@ -82,9 +119,86 @@ client.once(Events.ClientReady, (c) => {
   
   // Définir le statut du bot
   c.user.setPresence({
-    activities: [{ name: 'les commandes / | Bot Communautaire' }],
+    activities: [{ name: 'les commandes ! | Bot Communautaire' }],
     status: 'online',
   });
+});
+
+// Événement: Nouveau membre (welcome + autorole)
+client.on(Events.GuildMemberAdd, async (member) => {
+  try {
+    const automations = await fetchAutomations();
+    
+    // Autorole
+    if (automations.autorole?.enabled && automations.autorole.roleId) {
+      try {
+        const role = member.guild.roles.cache.get(automations.autorole.roleId);
+        if (role) {
+          await member.roles.add(role);
+          console.log(`✅ Rôle automatique attribué à ${member.user.tag}`);
+        }
+      } catch (error) {
+        console.error('❌ Erreur autorole:', error);
+      }
+    }
+
+    // Message de bienvenue
+    if (automations.welcome?.enabled && automations.welcome.channelId) {
+      try {
+        const channel = await member.guild.channels.fetch(automations.welcome.channelId);
+        if (channel?.isTextBased()) {
+          const message = automations.welcome.message
+            .replace(/\{user\}/g, `<@${member.id}>`)
+            .replace(/\{server\}/g, member.guild.name)
+            .replace(/\{count\}/g, member.guild.memberCount.toString());
+
+          if (automations.welcome.embedEnabled) {
+            const { EmbedBuilder } = await import('discord.js');
+            const embed = new EmbedBuilder()
+              .setTitle(automations.welcome.embedTitle)
+              .setDescription(message)
+              .setColor(automations.welcome.embedColor)
+              .setThumbnail(member.user.displayAvatarURL())
+              .setTimestamp();
+            await (channel as any).send({ embeds: [embed] });
+          } else {
+            await (channel as any).send(message);
+          }
+          console.log(`✅ Message de bienvenue envoyé pour ${member.user.tag}`);
+        }
+      } catch (error) {
+        console.error('❌ Erreur welcome:', error);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erreur gestion nouveau membre:', error);
+  }
+});
+
+// Événement: Membre parti (goodbye)
+client.on(Events.GuildMemberRemove, async (member) => {
+  try {
+    const automations = await fetchAutomations();
+    
+    if (automations.goodbye?.enabled && automations.goodbye.channelId) {
+      try {
+        const channel = await member.guild.channels.fetch(automations.goodbye.channelId);
+        if (channel?.isTextBased()) {
+          const message = automations.goodbye.message
+            .replace(/\{user\}/g, member.user.tag)
+            .replace(/\{server\}/g, member.guild.name)
+            .replace(/\{count\}/g, member.guild.memberCount.toString());
+
+          await (channel as any).send(message);
+          console.log(`✅ Message de départ envoyé pour ${member.user.tag}`);
+        }
+      } catch (error) {
+        console.error('❌ Erreur goodbye:', error);
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erreur gestion départ membre:', error);
+  }
 });
 
 // Événement: Interaction créée (commandes slash)
@@ -130,8 +244,104 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 // Événement: Message créé (commandes avec préfixe !)
 client.on(Events.MessageCreate, async (message) => {
-  // Ignorer les bots et les messages sans préfixe
+  // Ignorer les bots
   if (message.author.bot) return;
+
+  try {
+    const automations = await fetchAutomations();
+
+    // ===== AUTOMOD =====
+    if (automations.automod?.enabled && message.guild) {
+      let shouldDelete = false;
+      let reason = '';
+
+      // Anti-spam (messages identiques rapides - détection simple)
+      // Note: une vraie détection anti-spam nécessiterait un cache de messages par user
+
+      // Anti-liens
+      if (automations.automod.antiLinks) {
+        const linkRegex = /(https?:\/\/[^\s]+)/gi;
+        if (linkRegex.test(message.content)) {
+          shouldDelete = true;
+          reason = 'Lien interdit';
+        }
+      }
+
+      // Anti-caps
+      if (automations.automod.antiCaps && message.content.length > 10) {
+        const capsCount = (message.content.match(/[A-Z]/g) || []).length;
+        const capsPercent = (capsCount / message.content.length) * 100;
+        if (capsPercent > (automations.automod.capsThreshold || 70)) {
+          shouldDelete = true;
+          reason = 'Trop de majuscules';
+        }
+      }
+
+      // Supprimer le message et logger
+      if (shouldDelete) {
+        try {
+          await message.delete();
+          console.log(`🛡️ Message supprimé de ${message.author.tag}: ${reason}`);
+          
+          // Logger dans le canal de logs si configuré
+          if (automations.automod.logChannelId) {
+            const logChannel = await message.guild.channels.fetch(automations.automod.logChannelId);
+            if (logChannel?.isTextBased()) {
+              await (logChannel as any).send(
+                `🛡️ **Automod**: Message de ${message.author.tag} supprimé\n**Raison**: ${reason}\n**Contenu**: ${message.content.slice(0, 100)}`
+              );
+            }
+          }
+        } catch (error) {
+          console.error('❌ Erreur automod:', error);
+        }
+        return; // Ne pas traiter les commandes si le message est supprimé
+      }
+    }
+
+    // ===== LEVEL SYSTEM =====
+    if (automations.levelSystem?.enabled && message.guild) {
+      const userId = message.author.id;
+      const now = Date.now();
+      const userData = userXP.get(userId) || { xp: 0, level: 1, lastMessage: 0 };
+      
+      // Cooldown XP
+      const cooldown = (automations.levelSystem.xpCooldown || 60) * 1000;
+      if (now - userData.lastMessage >= cooldown) {
+        userData.xp += automations.levelSystem.xpPerMessage || 15;
+        userData.lastMessage = now;
+
+        // Calcul du niveau (100 XP par niveau par exemple)
+        const newLevel = Math.floor(userData.xp / 100) + 1;
+        
+        if (newLevel > userData.level) {
+          userData.level = newLevel;
+          userXP.set(userId, userData);
+
+          // Message de level up
+          if (automations.levelSystem.channelId) {
+            try {
+              const levelChannel = await message.guild.channels.fetch(automations.levelSystem.channelId);
+              if (levelChannel?.isTextBased()) {
+                const levelMsg = automations.levelSystem.message
+                  .replace(/\{user\}/g, `<@${userId}>`)
+                  .replace(/\{level\}/g, newLevel.toString());
+                await (levelChannel as any).send(levelMsg);
+              }
+            } catch (error) {
+              console.error('❌ Erreur level up:', error);
+            }
+          }
+        } else {
+          userXP.set(userId, userData);
+        }
+      }
+    }
+  } catch (error) {
+    console.error('❌ Erreur automatisations:', error);
+  }
+
+  // ===== COMMANDES AVEC PRÉFIXE ! =====
   if (!message.content.startsWith(PREFIX)) return;
 
   // Parser le nom de la commande et les arguments

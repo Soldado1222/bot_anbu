@@ -100,6 +100,19 @@ app.get('/internal/commands', async (req, res) => {
   }
 });
 
+// Route interne pour les automatisations (sans auth)
+app.get('/internal/automations', async (req, res) => {
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const filePath = path.join(process.cwd(), 'data', 'automations.json');
+    const data = await fs.readFile(filePath, 'utf-8');
+    res.json(JSON.parse(data));
+  } catch {
+    res.json({});
+  }
+});
+
 // Routes
 app.use('/auth', createAuthRoutes());
 app.use('/api/bot', isAuthenticated, createBotRoutes(discordClient));
