@@ -1,74 +1,95 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Bot, Shield, Zap } from 'lucide-react';
+import axios from '../lib/axios';
+import { Shield, Zap, Terminal, TrendingUp } from 'lucide-react';
 
 export default function Login() {
   const { user, login } = useAuth();
   const navigate = useNavigate();
+  const [botInfo, setBotInfo] = useState<{ username?: string; avatar?: string } | null>(null);
 
   useEffect(() => {
-    if (user) {
-      navigate('/');
-    }
+    if (user) navigate('/');
   }, [user, navigate]);
 
+  useEffect(() => {
+    axios.get('/api/bot/status').then(res => {
+      if (res.data?.user) setBotInfo(res.data.user);
+    }).catch(() => {});
+  }, []);
+
+  const features = [
+    { icon: Terminal, color: 'text-discord-blurple', bg: 'bg-discord-blurple/10', title: 'Commandes custom', desc: 'Créez vos propres commandes avec le préfixe !' },
+    { icon: Zap, color: 'text-discord-yellow', bg: 'bg-discord-yellow/10', title: 'Automatisations', desc: 'Bienvenue, autorole, automod et bien plus' },
+    { icon: Shield, color: 'text-discord-green', bg: 'bg-discord-green/10', title: 'Modération', desc: 'Gérez votre serveur facilement' },
+    { icon: TrendingUp, color: 'text-discord-fuchsia', bg: 'bg-discord-fuchsia/10', title: 'Statistiques', desc: 'Suivez les performances en temps réel' },
+  ];
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-discord-notquiteblack via-discord-notquitedark to-discord-dark p-4">
-      <div className="max-w-md w-full">
-        {/* Logo et titre */}
+    <div className="min-h-screen flex items-center justify-center bg-[#111214] p-4">
+      {/* Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-discord-blurple/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-discord-fuchsia/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="max-w-md w-full relative">
+        {/* Logo */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-discord-blurple mb-4 shadow-lg shadow-discord-blurple/50">
-            <Bot size={40} className="text-white" />
-          </div>
-          <h1 className="text-4xl font-bold text-white mb-2">Dashboard Bot</h1>
-          <p className="text-gray-400 text-lg">Gérez votre bot Discord en toute simplicité</p>
+          {botInfo?.avatar ? (
+            <img
+              src={botInfo.avatar}
+              alt={botInfo.username}
+              className="w-24 h-24 rounded-3xl mx-auto mb-4 ring-4 ring-discord-blurple/30 shadow-2xl shadow-discord-blurple/20"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-3xl bg-discord-blurple mx-auto mb-4 flex items-center justify-center ring-4 ring-discord-blurple/30 shadow-2xl shadow-discord-blurple/20">
+              <span className="text-white text-4xl font-black">A</span>
+            </div>
+          )}
+          <h1 className="text-3xl font-black text-white">
+            {botInfo?.username || "L'ANBU"} <span className="text-discord-blurple">Dashboard</span>
+          </h1>
+          <p className="text-gray-500 mt-1">Panneau de contrôle de votre bot Discord</p>
         </div>
 
-        {/* Card de connexion */}
-        <div className="bg-discord-notquitedark rounded-2xl shadow-2xl p-8 border border-gray-700/50 animate-fade-in" style={{ animationDelay: '0.1s' }}>
-          <div className="space-y-6 mb-8">
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-discord-blurple/20 flex items-center justify-center">
-                <Zap size={20} className="text-discord-blurple" />
+        {/* Card */}
+        <div className="bg-[#1a1d21] rounded-2xl border border-white/5 p-6 shadow-2xl animate-fade-in" style={{ animationDelay: '0.1s' }}>
+          {/* Features grid */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            {features.map(f => (
+              <div key={f.title} className="flex items-start gap-2.5 p-3 rounded-xl bg-white/3 hover:bg-white/5 transition">
+                <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0', f.bg)}>
+                  <f.icon size={15} className={f.color} />
+                </div>
+                <div>
+                  <p className="text-white text-xs font-semibold">{f.title}</p>
+                  <p className="text-gray-600 text-xs mt-0.5 leading-tight">{f.desc}</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-white font-semibold">Contrôle en temps réel</h3>
-                <p className="text-gray-400 text-sm">Surveillez et gérez votre bot instantanément</p>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-3">
-              <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-discord-green/20 flex items-center justify-center">
-                <Shield size={20} className="text-discord-green" />
-              </div>
-              <div>
-                <h3 className="text-white font-semibold">Sécurisé</h3>
-                <p className="text-gray-400 text-sm">Authentification Discord OAuth2</p>
-              </div>
-            </div>
+            ))}
           </div>
 
+          {/* Button */}
           <button
             onClick={login}
-            className="w-full bg-discord-blurple hover:bg-opacity-90 text-white font-semibold py-4 px-6 rounded-xl transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg hover:shadow-discord-blurple/50 transform hover:scale-[1.02] active:scale-[0.98]"
+            className="w-full bg-discord-blurple hover:bg-discord-blurple/90 text-white font-bold py-3.5 px-6 rounded-xl transition-all duration-200 flex items-center justify-center space-x-3 shadow-lg shadow-discord-blurple/25 hover:shadow-discord-blurple/40 hover:scale-[1.02] active:scale-[0.98]"
           >
-            <svg className="w-6 h-6" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-5 h-5" viewBox="0 0 71 55" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M60.1045 4.8978C55.5792 2.8214 50.7265 1.2916 45.6527 0.41542C45.5603 0.39851 45.468 0.440769 45.4204 0.525289C44.7963 1.6353 44.105 3.0834 43.6209 4.2216C38.1637 3.4046 32.7345 3.4046 27.3892 4.2216C26.905 3.0581 26.1886 1.6353 25.5617 0.525289C25.5141 0.443589 25.4218 0.40133 25.3294 0.41542C20.2584 1.2888 15.4057 2.8186 10.8776 4.8978C10.8384 4.9147 10.8048 4.9429 10.7825 4.9795C1.57795 18.7309 -0.943561 32.1443 0.293408 45.3914C0.299005 45.4562 0.335386 45.5182 0.385761 45.5576C6.45866 50.0174 12.3413 52.7249 18.1147 54.5195C18.2071 54.5477 18.305 54.5139 18.3638 54.4378C19.7295 52.5728 20.9469 50.6063 21.9907 48.5383C22.0523 48.4172 21.9935 48.2735 21.8676 48.2256C19.9366 47.4931 18.0979 46.6 16.3292 45.5858C16.1893 45.5041 16.1781 45.304 16.3068 45.2082C16.679 44.9293 17.0513 44.6391 17.4067 44.3461C17.471 44.2926 17.5606 44.2813 17.6362 44.3151C29.2558 49.6202 41.8354 49.6202 53.3179 44.3151C53.3935 44.2785 53.4831 44.2898 53.5502 44.3433C53.9057 44.6363 54.2779 44.9293 54.6529 45.2082C54.7816 45.304 54.7732 45.5041 54.6333 45.5858C52.8646 46.6197 51.0259 47.4931 49.0921 48.2228C48.9662 48.2707 48.9102 48.4172 48.9718 48.5383C50.038 50.6034 51.2554 52.5699 52.5959 54.435C52.6519 54.5139 52.7526 54.5477 52.845 54.5195C58.6464 52.7249 64.529 50.0174 70.6019 45.5576C70.6551 45.5182 70.6887 45.459 70.6943 45.3942C72.1747 30.0791 68.2147 16.7757 60.1968 4.9823C60.1772 4.9429 60.1437 4.9147 60.1045 4.8978ZM23.7259 37.3253C20.2276 37.3253 17.3451 34.1136 17.3451 30.1693C17.3451 26.225 20.1717 23.0133 23.7259 23.0133C27.308 23.0133 30.1626 26.2532 30.1066 30.1693C30.1066 34.1136 27.28 37.3253 23.7259 37.3253ZM47.3178 37.3253C43.8196 37.3253 40.9371 34.1136 40.9371 30.1693C40.9371 26.225 43.7636 23.0133 47.3178 23.0133C50.9 23.0133 53.7545 26.2532 53.6986 30.1693C53.6986 34.1136 50.9 37.3253 47.3178 37.3253Z" fill="currentColor"/>
             </svg>
-            <span>Se connecter avec Discord</span>
+            <span>Connexion avec Discord</span>
           </button>
-
-          <p className="text-center text-gray-500 text-sm mt-6">
-            En vous connectant, vous acceptez d'utiliser votre compte Discord pour accéder au dashboard
-          </p>
         </div>
 
-        {/* Footer */}
-        <div className="text-center mt-8 text-gray-500 text-sm animate-fade-in" style={{ animationDelay: '0.2s' }}>
-          <p>Dashboard Bot Discord © 2026</p>
-        </div>
+        <p className="text-center text-gray-700 text-xs mt-5">
+          Accès réservé aux membres autorisés · OAuth2 sécurisé
+        </p>
       </div>
     </div>
   );
 }
+
+// Import manquant ajouté inline
+function clsx(...args: any[]) { return args.filter(Boolean).join(' '); }

@@ -9,6 +9,7 @@ import { createBotRoutes } from './routes/bot';
 import { createStatsRoutes } from './routes/stats';
 import { createAuthRoutes } from './routes/auth';
 import { createCommandsRoutes } from './routes/commands';
+import { createAutomationsRoutes } from './routes/automations';
 import { setupWebSocket } from './websocket';
 
 dotenv.config();
@@ -91,6 +92,7 @@ app.use('/auth', createAuthRoutes());
 app.use('/api/bot', isAuthenticated, createBotRoutes(discordClient));
 app.use('/api/stats', isAuthenticated, createStatsRoutes(discordClient));
 app.use('/api/commands', isAuthenticated, createCommandsRoutes(discordClient));
+app.use('/api/automations', isAuthenticated, createAutomationsRoutes(discordClient));
 
 // Route de santé
 app.get('/health', (req, res) => {
