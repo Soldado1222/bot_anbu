@@ -25,6 +25,25 @@ body {
   min-height: 100vh;
 }
 
+/* Select dropdown styling */
+select {
+  background-color: #1a1d21 !important;
+  color: white !important;
+  border-color: rgba(255,255,255,0.05) !important;
+}
+
+select option {
+  background-color: #1a1d21 !important;
+  color: white !important;
+}
+
+select option:hover,
+select option:focus,
+select option:checked {
+  background-color: #5865F2 !important;
+  color: white !important;
+}
+
 /* Scrollbar personnalisée */
 ::-webkit-scrollbar {
   width: 12px;
