@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../../lib/axios';
 import { useAuth } from '../../contexts/AuthContext';
 import { Send, RefreshCw, Activity, AlertCircle, CheckCircle } from 'lucide-react';
 import clsx from 'clsx';
@@ -41,7 +41,7 @@ export default function Controls() {
 
   const fetchBotStatus = async () => {
     try {
-      const response = await axios.get('/api/bot/status', { withCredentials: true });
+      const response = await axios.get('/api/bot/status');
       setBotStatus(response.data);
     } catch (error) {
       console.error('Erreur lors de la récupération du statut:', error);
@@ -50,7 +50,7 @@ export default function Controls() {
 
   const fetchGuilds = async () => {
     try {
-      const response = await axios.get('/api/stats/guilds', { withCredentials: true });
+      const response = await axios.get('/api/stats/guilds');
       setGuilds(response.data);
     } catch (error) {
       console.error('Erreur lors de la récupération des serveurs:', error);
@@ -59,7 +59,7 @@ export default function Controls() {
 
   const fetchChannels = async (guildId: string) => {
     try {
-      const response = await axios.get(`/api/bot/guilds/${guildId}/channels`, { withCredentials: true });
+      const response = await axios.get(`/api/bot/guilds/${guildId}/channels`);
       setChannels(response.data);
     } catch (error) {
       console.error('Erreur lors de la récupération des canaux:', error);
@@ -82,7 +82,7 @@ export default function Controls() {
       await axios.post('/api/bot/send-message', {
         channelId: selectedChannel,
         content: message,
-      }, { withCredentials: true });
+      });
       
       showNotification('success', 'Message envoyé avec succès');
       setMessage('');
@@ -104,7 +104,7 @@ export default function Controls() {
       await axios.post('/api/bot/status', {
         activity: statusActivity ? { name: statusActivity, type: 3 } : null,
         status: statusType,
-      }, { withCredentials: true });
+      });
       
       showNotification('success', 'Statut mis à jour avec succès');
       fetchBotStatus();
@@ -124,7 +124,7 @@ export default function Controls() {
     if (!confirm('Êtes-vous sûr de vouloir redémarrer le bot ?')) return;
 
     try {
-      await axios.post('/api/bot/restart', {}, { withCredentials: true });
+      await axios.post('/api/bot/restart', {});
       showNotification('success', 'Redémarrage du bot en cours...');
     } catch (error) {
       showNotification('error', 'Erreur lors du redémarrage');

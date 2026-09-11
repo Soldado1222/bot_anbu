@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import axios from '../lib/axios';
 
 interface User {
   id: string;
@@ -28,8 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAuth = async () => {
     try {
-      const backendUrl = import.meta.env.VITE_API_URL || '';
-      const response = await axios.get(`${backendUrl}/auth/user`, { withCredentials: true });
+      const response = await axios.get('/auth/user');
       setUser(response.data);
     } catch (error) {
       setUser(null);
@@ -39,15 +38,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = () => {
-    // En production, utiliser l'URL complète du backend
     const backendUrl = import.meta.env.VITE_API_URL || '';
     window.location.href = `${backendUrl}/auth/discord`;
   };
 
   const logout = async () => {
     try {
-      const backendUrl = import.meta.env.VITE_API_URL || '';
-      await axios.post(`${backendUrl}/auth/logout`, {}, { withCredentials: true });
+      await axios.post('/auth/logout', {});
       setUser(null);
       window.location.href = '/login';
     } catch (error) {

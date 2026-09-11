@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '../../lib/axios';
 import { Server, Users, Hash, Crown, Calendar } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -24,7 +24,7 @@ export default function Servers() {
 
   const fetchGuilds = async () => {
     try {
-      const response = await axios.get('/api/stats/guilds', { withCredentials: true });
+      const response = await axios.get('/api/stats/guilds');
       setGuilds(response.data);
       setLoading(false);
     } catch (error) {
@@ -35,7 +35,7 @@ export default function Servers() {
 
   const fetchGuildDetails = async (guildId: string) => {
     try {
-      const response = await axios.get(`/api/stats/guilds/${guildId}`, { withCredentials: true });
+      const response = await axios.get(`/api/stats/guilds/${guildId}`);
       setGuildDetails(response.data);
     } catch (error) {
       console.error('Erreur lors de la récupération des détails:', error);

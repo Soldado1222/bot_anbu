@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
+import axios from '../../lib/axios';
 import { useWebSocket } from '../../contexts/WebSocketContext';
 import { Server, Users, MessageSquare, Activity, TrendingUp, Clock } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -47,7 +47,7 @@ export default function Overview() {
 
   const fetchStats = async () => {
     try {
-      const response = await axios.get('/api/stats', { withCredentials: true });
+      const response = await axios.get('/api/stats');
       setStats(response.data);
       setLoading(false);
     } catch (error) {
