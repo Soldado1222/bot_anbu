@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useBotStatus } from '../contexts/BotStatusContext';
 import {
-  LayoutDashboard, Server, Terminal, Zap, Shield,
+  LayoutDashboard, Server, Zap, Shield,
   Settings, Sliders, FileText, LogOut, ChevronRight,
   Star, Cpu
 } from 'lucide-react';
@@ -19,7 +19,6 @@ const navSections = [
   {
     label: 'CONFIGURATION',
     items: [
-      { name: 'Commandes', href: '/commands', icon: Terminal },
       { name: 'Automatisations', href: '/automations', icon: Zap },
       { name: 'Modération', href: '/moderation', icon: Shield },
     ],

@@ -5,7 +5,6 @@ import Overview from '../components/dashboard/Overview';
 import Servers from '../components/dashboard/Servers';
 import Logs from '../components/dashboard/Logs';
 import Controls from '../components/dashboard/Controls';
-import Commands from '../components/dashboard/Commands';
 import Automations from '../components/dashboard/Automations';
 import Settings from '../components/dashboard/Settings';
 
@@ -19,7 +18,6 @@ export default function Dashboard() {
           <Routes>
             <Route path="/" element={<Overview />} />
             <Route path="/servers" element={<Servers />} />
-            <Route path="/commands" element={<Commands />} />
             <Route path="/automations" element={<Automations />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/controls" element={<Controls />} />
