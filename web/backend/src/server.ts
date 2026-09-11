@@ -29,8 +29,22 @@ const discordClient = new Client({
 });
 
 // Middleware
+const allowedOrigins = [
+  process.env.FRONTEND_URL || 'http://localhost:5173',
+  'https://botanbu.netlify.app',
+  'http://localhost:5173'
+];
+
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Autoriser les requêtes sans origin (mobile, Postman, etc.)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 app.use(express.json());
@@ -74,6 +88,12 @@ app.use(passport.session());
 
 // Middleware pour vérifier l'authentification
 export const isAuthenticated = (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.log('🔐 Auth check:', { 
+    authenticated: req.isAuthenticated(), 
+    session: req.session?.id, 
+    user: req.user ? (req.user as any).id : 'none' 
+  });
+  
   if (req.isAuthenticated()) {
     return next();
   }
