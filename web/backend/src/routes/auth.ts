@@ -14,7 +14,7 @@ export function createAuthRoutes() {
   // Callback Discord OAuth2
   router.get('/discord/callback',
     passport.authenticate('discord', { failureRedirect: `${process.env.FRONTEND_URL || 'https://botanbu.netlify.app'}/login?error=auth_failed` }),
-    (req, res) => {
+    (req: any, res) => {
       const user = req.user as any;
       const token = jwt.sign(
         {

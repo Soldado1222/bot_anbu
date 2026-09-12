@@ -107,8 +107,8 @@ export const isAuthenticated = (req: express.Request, res: express.Response, nex
   try {
     const jwt = require('jsonwebtoken');
     const JWT_SECRET = process.env.JWT_SECRET || 'lanbu-jwt-secret-change-me';
-    const user = jwt.verify(token, JWT_SECRET);
-    (req as any).user = user;
+    const decoded = jwt.verify(token, JWT_SECRET);
+    (req as any).jwtUser = decoded;
     return next();
   } catch {
     return res.status(401).json({ error: 'Token invalide ou expiré' });
@@ -117,7 +117,8 @@ export const isAuthenticated = (req: express.Request, res: express.Response, nex
 
 // Middleware pour vérifier les droits admin
 export const isAdmin = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  if (req.isAuthenticated() && (req.user as any)?.isAdmin) {
+  const user = (req as any).jwtUser;
+  if (user?.isAdmin) {
     return next();
   }
   res.status(403).json({ error: 'Accès refusé - Droits administrateur requis' });

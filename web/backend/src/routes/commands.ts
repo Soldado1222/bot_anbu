@@ -83,7 +83,7 @@ export function createCommandsRoutes(client: Client) {
   router.post('/', async (req, res) => {
     try {
       const { name, description, response, category = 'custom' } = req.body;
-      const user = req.user as any;
+      const user = (req as any).jwtUser;
 
       if (!name || !description || !response) {
         return res.status(400).json({ error: 'Nom, description et réponse requis' });
