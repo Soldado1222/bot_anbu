@@ -2,7 +2,7 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useBotStatus } from '../contexts/BotStatusContext';
 import {
-  LayoutDashboard, Server, Zap, Shield,
+  LayoutDashboard, Server, Zap, Shield, Ticket,
   Settings, Sliders, FileText, LogOut, ChevronRight,
   Star, Cpu, Radio
 } from 'lucide-react';
@@ -20,6 +20,7 @@ const navSections = [
     label: 'CONFIGURATION',
     items: [
       { name: 'Automatisations', href: '/automations', icon: Zap },
+      { name: 'Tickets', href: '/tickets', icon: Ticket },
       { name: 'Modération', href: '/moderation', icon: Shield },
       { name: 'Live Twitch', href: '/live', icon: Radio },
     ],

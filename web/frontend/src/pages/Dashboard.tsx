@@ -6,6 +6,7 @@ import Servers from '../components/dashboard/Servers';
 import Logs from '../components/dashboard/Logs';
 import Controls from '../components/dashboard/Controls';
 import Automations from '../components/dashboard/Automations';
+import Tickets from '../components/dashboard/Tickets';
 import Moderation from '../components/dashboard/Moderation';
 import Settings from '../components/dashboard/Settings';
 import Live from '../components/dashboard/Live';
@@ -21,6 +22,7 @@ export default function Dashboard() {
             <Route path="/" element={<Overview />} />
             <Route path="/servers" element={<Servers />} />
             <Route path="/automations" element={<Automations />} />
+            <Route path="/tickets" element={<Tickets />} />
             <Route path="/moderation" element={<Moderation />} />
             <Route path="/live" element={<Live />} />
             <Route path="/logs" element={<Logs />} />

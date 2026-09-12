@@ -13,6 +13,7 @@ import { createCommandsRoutes } from './routes/commands';
 import { createAutomationsRoutes } from './routes/automations';
 import { createModerationRoutes } from './routes/moderation';
 import { createTwitchRoutes } from './routes/twitch';
+import { createTicketsRoutes, loadTicketsConfig } from './routes/tickets';
 import { setupWebSocket } from './websocket';
 
 dotenv.config();
@@ -160,6 +161,36 @@ app.get('/internal/automations', async (req, res) => {
   }
 });
 
+// Route interne pour la config tickets (sans auth — utilisée par le bot)
+app.get('/internal/tickets', async (req, res) => {
+  try {
+    const config = await loadTicketsConfig();
+    res.json(config);
+  } catch {
+    res.json({});
+  }
+});
+
+// Route interne PUT pour sauvegarder la config tickets (sans auth — utilisée par le bot)
+app.put('/internal/tickets', async (req, res) => {
+  const secret = req.headers['x-internal-secret'];
+  const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'lanbu-internal';
+  if (secret !== INTERNAL_SECRET) {
+    return res.status(403).json({ error: 'Secret invalide' });
+  }
+  try {
+    const fsModule = await import('fs/promises');
+    const pathModule = await import('path');
+    const filePath = pathModule.join(process.cwd(), 'data', 'tickets.json');
+    const dataDir = pathModule.join(process.cwd(), 'data');
+    try { await fsModule.access(dataDir); } catch { await fsModule.mkdir(dataDir, { recursive: true }); }
+    await fsModule.writeFile(filePath, JSON.stringify(req.body, null, 2));
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: 'Erreur lors de la sauvegarde des tickets' });
+  }
+});
+
 // Routes
 app.use('/auth', createAuthRoutes());
 app.use('/api/bot', isAuthenticated, createBotRoutes(discordClient));
@@ -168,6 +199,7 @@ app.use('/api/commands', isAuthenticated, createCommandsRoutes(discordClient));
 app.use('/api/automations', isAuthenticated, createAutomationsRoutes(discordClient));
 app.use('/api/moderation', isAuthenticated, createModerationRoutes(discordClient));
 app.use('/api/twitch', isAuthenticated, createTwitchRoutes());
+app.use('/api/tickets', isAuthenticated, createTicketsRoutes(discordClient));
 
 // Route de santé
 app.get('/health', (req, res) => {

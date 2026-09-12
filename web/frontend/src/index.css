@@ -77,3 +77,8 @@ select option:checked {
 .animate-fade-in {
   animation: fadeIn 0.3s ease-out;
 }
+
+/* Hide Netlify badge */
+iframe[src*="netlify"] {
+  display: none !important;
+}
