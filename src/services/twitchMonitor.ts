@@ -221,11 +221,17 @@ async function checkStreams(discordClient: Client): Promise<void> {
             || profileCache.get(login)
             || undefined;
 
-          const mention = config.roleId ? `<@&${config.roleId}> ` : '';
+          const mention = config.roleId ? `<@&${config.roleId}>` : '';
+
+          // 1er message : embed seul (le ping dans le même message ne notifie pas les membres)
           await channel.send({
-            content: `${mention}🔴 **${stream.user_name}** est maintenant en live sur Twitch !`,
             embeds: [buildLiveEmbed(stream, avatarUrl)],
           });
+
+          // 2ème message : ping séparé pour déclencher la vraie notification Discord
+          if (mention) {
+            await channel.send({ content: mention });
+          }
         } catch (err) {
           console.error(`❌ Erreur envoi notif Twitch pour ${stream.user_name}:`, err);
         }
