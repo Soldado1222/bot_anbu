@@ -95,18 +95,24 @@ passport.deserializeUser((obj: any, done) => {
 app.use(passport.initialize());
 app.use(passport.session());
 
-// Middleware pour vérifier l'authentification
+// Middleware pour vérifier l'authentification (JWT)
 export const isAuthenticated = (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.log('🔐 Auth check:', { 
-    authenticated: req.isAuthenticated(), 
-    session: req.session?.id, 
-    user: req.user ? (req.user as any).id : 'none' 
-  });
-  
-  if (req.isAuthenticated()) {
-    return next();
+  const authHeader = req.headers.authorization;
+  const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+  if (!token) {
+    return res.status(401).json({ error: 'Non authentifié' });
   }
-  res.status(401).json({ error: 'Non authentifié' });
+
+  try {
+    const jwt = require('jsonwebtoken');
+    const JWT_SECRET = process.env.JWT_SECRET || 'lanbu-jwt-secret-change-me';
+    const user = jwt.verify(token, JWT_SECRET);
+    (req as any).user = user;
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'Token invalide ou expiré' });
+  }
 };
 
 // Middleware pour vérifier les droits admin

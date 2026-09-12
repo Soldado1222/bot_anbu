@@ -27,10 +27,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const checkAuth = async () => {
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await axios.get('/auth/user');
       setUser(response.data);
-    } catch (error) {
+    } catch {
+      // Token invalide ou expiré
+      localStorage.removeItem('auth_token');
       setUser(null);
     } finally {
       setLoading(false);
@@ -42,14 +50,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     window.location.href = `${backendUrl}/auth/discord`;
   };
 
-  const logout = async () => {
-    try {
-      await axios.post('/auth/logout', {});
-      setUser(null);
-      window.location.href = '/login';
-    } catch (error) {
-      console.error('Erreur lors de la déconnexion:', error);
-    }
+  const logout = () => {
+    localStorage.removeItem('auth_token');
+    setUser(null);
+    window.location.href = '/login';
   };
 
   return (

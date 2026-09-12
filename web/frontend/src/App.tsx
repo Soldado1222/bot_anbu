@@ -4,6 +4,7 @@ import { WebSocketProvider } from './contexts/WebSocketContext';
 import { BotStatusProvider } from './contexts/BotStatusContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import AuthCallback from './pages/AuthCallback';
 import Loading from './components/Loading';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -20,6 +21,7 @@ function App() {
           <BotStatusProvider>
             <Routes>
               <Route path="/login" element={<Login />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
               <Route
                 path="/*"
                 element={

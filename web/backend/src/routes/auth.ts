@@ -1,5 +1,9 @@
 import { Router } from 'express';
 import passport from 'passport';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'lanbu-jwt-secret-change-me';
+const JWT_EXPIRY = '7d';
 
 export function createAuthRoutes() {
   const router = Router();
@@ -9,30 +13,48 @@ export function createAuthRoutes() {
 
   // Callback Discord OAuth2
   router.get('/discord/callback',
-    passport.authenticate('discord', { failureRedirect: '/login' }),
+    passport.authenticate('discord', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=auth_failed` }),
     (req, res) => {
-      // Rediriger vers le frontend après succès
-      res.redirect(process.env.FRONTEND_URL || 'http://localhost:5173');
+      // Générer un JWT avec les infos user
+      const user = req.user as any;
+      const token = jwt.sign(
+        {
+          id: user.id,
+          username: user.username,
+          discriminator: user.discriminator,
+          avatar: user.avatar,
+          isAdmin: user.isAdmin,
+        },
+        JWT_SECRET,
+        { expiresIn: JWT_EXPIRY }
+      );
+
+      // Rediriger vers le frontend avec le token dans l'URL
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
     }
   );
 
-  // Obtenir l'utilisateur actuel
+  // Obtenir l'utilisateur actuel (via JWT header)
   router.get('/user', (req, res) => {
-    if (req.isAuthenticated()) {
-      res.json(req.user);
-    } else {
-      res.status(401).json({ error: 'Non authentifié' });
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Non authentifié' });
+    }
+
+    try {
+      const user = jwt.verify(token, JWT_SECRET);
+      res.json(user);
+    } catch {
+      res.status(401).json({ error: 'Token invalide ou expiré' });
     }
   });
 
-  // Déconnexion
+  // Déconnexion (côté client on supprime juste le token)
   router.post('/logout', (req, res) => {
-    req.logout((err) => {
-      if (err) {
-        return res.status(500).json({ error: 'Erreur lors de la déconnexion' });
-      }
-      res.json({ message: 'Déconnexion réussie' });
-    });
+    res.json({ message: 'Déconnexion réussie' });
   });
 
   return router;
