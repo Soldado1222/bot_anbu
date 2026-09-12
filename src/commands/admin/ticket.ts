@@ -334,6 +334,23 @@ const command: Command = {
 
 // ── Helper : fetch config ticket depuis le backend ──────────────────────────
 export async function fetchTicketConfig(): Promise<any> {
+  // Lire depuis le fichier local en priorité
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const filePath = path.join(process.cwd(), 'data', 'tickets.json');
+    
+    if (fs.existsSync(filePath)) {
+      const data = fs.readFileSync(filePath, 'utf-8');
+      const config = JSON.parse(data);
+      console.log('✅ Config tickets chargée depuis le fichier local');
+      return config;
+    }
+  } catch (error) {
+    console.warn('⚠️ Impossible de lire le fichier local tickets.json');
+  }
+
+  // Fallback : essayer de lire depuis le backend
   return new Promise((resolve) => {
     const https = require('https');
     const http = require('http');
@@ -346,14 +363,24 @@ export async function fetchTicketConfig(): Promise<any> {
       res.on('data', (chunk: any) => (data += chunk));
       res.on('end', () => {
         try {
-          resolve(JSON.parse(data));
+          const config = JSON.parse(data);
+          console.log('✅ Config tickets chargée depuis le backend');
+          resolve(config);
         } catch {
+          console.warn('⚠️ Erreur parsing config backend');
           resolve(defaultTicketConfig());
         }
       });
     });
-    req.on('error', () => resolve(defaultTicketConfig()));
-    req.on('timeout', () => { req.destroy(); resolve(defaultTicketConfig()); });
+    req.on('error', (err: any) => {
+      console.warn('⚠️ Erreur connexion backend:', err.message);
+      resolve(defaultTicketConfig());
+    });
+    req.on('timeout', () => { 
+      req.destroy(); 
+      console.warn('⚠️ Timeout backend');
+      resolve(defaultTicketConfig()); 
+    });
   });
 }
 
@@ -397,6 +424,25 @@ export interface TicketEntry {
 
 // ── Helper : sauvegarder config ticket ─────────────────────────────────────
 export async function saveTicketConfig(config: any): Promise<void> {
+  // Sauvegarder en local en priorité
+  try {
+    const fs = require('fs');
+    const path = require('path');
+    const dataDir = path.join(process.cwd(), 'data');
+    const filePath = path.join(dataDir, 'tickets.json');
+    
+    // Créer le dossier data/ s'il n'existe pas
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    
+    fs.writeFileSync(filePath, JSON.stringify(config, null, 2));
+    console.log('✅ Config tickets sauvegardée localement');
+  } catch (error) {
+    console.error('❌ Erreur sauvegarde locale tickets:', error);
+  }
+
+  // Essayer aussi de sauvegarder sur le backend (optionnel)
   return new Promise((resolve) => {
     const https = require('https');
     const http = require('http');
@@ -422,12 +468,22 @@ export async function saveTicketConfig(config: any): Promise<void> {
       },
       (res: any) => {
         res.on('data', () => {});
-        res.on('end', () => resolve());
+        res.on('end', () => {
+          console.log('✅ Config tickets sauvegardée sur le backend');
+          resolve();
+        });
       }
     );
 
-    req.on('error', () => resolve());
-    req.on('timeout', () => { req.destroy(); resolve(); });
+    req.on('error', (err: any) => {
+      console.warn('⚠️ Impossible de sauvegarder sur le backend:', err.message);
+      resolve();
+    });
+    req.on('timeout', () => { 
+      req.destroy(); 
+      console.warn('⚠️ Timeout sauvegarde backend');
+      resolve(); 
+    });
     req.write(body);
     req.end();
   });

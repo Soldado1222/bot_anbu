@@ -1,0 +1,14 @@
+{
+  "enabled": true,
+  "logChannelId": "",
+  "categoryId": "",
+  "supportRoleId": "",
+  "embedTitle": "🎫 Support & Tickets",
+  "embedDescription": "> Besoin d'aide ? Ouvre un ticket et notre équipe te répondra.\n\n**Catégories disponibles :**\n🐛 **Bug** — Signaler un problème technique\n💡 **Suggestion** — Proposer une idée\n🤝 **Partenariat** — Demande de partenariat\n❓ **Autre** — Toute autre question\n\n*Clique sur le bouton ci-dessous pour créer ton ticket.*",
+  "embedColor": "#5865F2",
+  "embedThumbnail": "",
+  "maxPerUser": 1,
+  "openTickets": 0,
+  "closedTickets": 0,
+  "tickets": []
+}
