@@ -4,7 +4,7 @@ import { useBotStatus } from '../contexts/BotStatusContext';
 import {
   LayoutDashboard, Server, Zap, Shield,
   Settings, Sliders, FileText, LogOut, ChevronRight,
-  Star, Cpu
+  Star, Cpu, Radio
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -21,6 +21,7 @@ const navSections = [
     items: [
       { name: 'Automatisations', href: '/automations', icon: Zap },
       { name: 'Modération', href: '/moderation', icon: Shield },
+      { name: 'Live Twitch', href: '/live', icon: Radio },
     ],
   },
   {

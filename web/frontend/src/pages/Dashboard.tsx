@@ -8,6 +8,7 @@ import Controls from '../components/dashboard/Controls';
 import Automations from '../components/dashboard/Automations';
 import Moderation from '../components/dashboard/Moderation';
 import Settings from '../components/dashboard/Settings';
+import Live from '../components/dashboard/Live';
 
 export default function Dashboard() {
   return (
@@ -21,6 +22,7 @@ export default function Dashboard() {
             <Route path="/servers" element={<Servers />} />
             <Route path="/automations" element={<Automations />} />
             <Route path="/moderation" element={<Moderation />} />
+            <Route path="/live" element={<Live />} />
             <Route path="/logs" element={<Logs />} />
             <Route path="/controls" element={<Controls />} />
             <Route path="/settings" element={<Settings />} />

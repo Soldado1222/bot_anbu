@@ -1,6 +1,7 @@
 import { Server as HTTPServer } from 'http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { Client, Events } from 'discord.js';
+import { fetchLiveStreams, loadTwitchConfig, liveStatusCache, TwitchStream } from './routes/twitch';
 
 export function setupWebSocket(server: HTTPServer, discordClient: Client) {
   const wss = new WebSocketServer({ server, path: '/ws' });
@@ -98,6 +99,68 @@ export function setupWebSocket(server: HTTPServer, discordClient: Client) {
       });
     }
   }, 30000);
+
+  // ─── Polling Twitch live (60s) ────────────────────────────────────────────
+  const twitchLiveSet = new Set<string>(); // logins actuellement en live
+
+  const pollTwitch = async () => {
+    const configured =
+      process.env.TWITCH_CLIENT_ID &&
+      process.env.TWITCH_CLIENT_ID !== 'your_twitch_client_id_here';
+    if (!configured) return;
+
+    try {
+      const config = await loadTwitchConfig();
+      if (!config.channels.length) return;
+
+      const streams = await fetchLiveStreams(config.channels);
+      const nowLive = new Set(streams.map((s: TwitchStream) => s.user_login.toLowerCase()));
+
+      // Enrichir les thumbnails
+      const enriched = streams.map((s: TwitchStream) => ({
+        ...s,
+        thumbnail_url: s.thumbnail_url
+          .replace('{width}', '440')
+          .replace('{height}', '248'),
+      }));
+
+      // Mettre à jour le cache partagé
+      liveStatusCache.clear();
+      enriched.forEach((s: TwitchStream) => liveStatusCache.set(s.user_login.toLowerCase(), s));
+
+      // Nouveaux lives
+      for (const stream of enriched) {
+        const login = stream.user_login.toLowerCase();
+        if (!twitchLiveSet.has(login)) {
+          twitchLiveSet.add(login);
+          broadcast('twitch:goLive', stream);
+          console.log(`🔴 [WS] ${stream.user_name} est en live`);
+        }
+      }
+
+      // Fins de live
+      for (const login of twitchLiveSet) {
+        if (!nowLive.has(login)) {
+          twitchLiveSet.delete(login);
+          broadcast('twitch:goOffline', { user_login: login });
+          console.log(`⚫ [WS] ${login} n'est plus en live`);
+        }
+      }
+
+      // Snapshot complet toutes les 60s (pour la page Live)
+      broadcast('twitch:streams', {
+        streams: enriched,
+        total: enriched.length,
+        liveLogins: Array.from(nowLive),
+      });
+    } catch (err) {
+      // Silencieux — pas de spam en cas d'erreur réseau
+    }
+  };
+
+  // Première vérification au démarrage, puis toutes les 60s
+  setTimeout(pollTwitch, 5000);
+  setInterval(pollTwitch, 60_000);
 
   console.log('✅ WebSocket configuré sur /ws');
 }
