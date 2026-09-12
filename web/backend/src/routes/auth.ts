@@ -13,9 +13,8 @@ export function createAuthRoutes() {
 
   // Callback Discord OAuth2
   router.get('/discord/callback',
-    passport.authenticate('discord', { failureRedirect: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/login?error=auth_failed` }),
+    passport.authenticate('discord', { failureRedirect: `${process.env.FRONTEND_URL || 'https://botanbu.netlify.app'}/login?error=auth_failed` }),
     (req, res) => {
-      // Générer un JWT avec les infos user
       const user = req.user as any;
       const token = jwt.sign(
         {
@@ -29,8 +28,8 @@ export function createAuthRoutes() {
         { expiresIn: JWT_EXPIRY }
       );
 
-      // Rediriger vers le frontend avec le token dans l'URL
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      // Rediriger vers le frontend avec le token
+      const frontendUrl = process.env.FRONTEND_URL || 'https://botanbu.netlify.app';
       res.redirect(`${frontendUrl}/auth/callback?token=${token}`);
     }
   );
