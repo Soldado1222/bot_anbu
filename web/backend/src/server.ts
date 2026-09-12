@@ -17,6 +17,15 @@ import { setupWebSocket } from './websocket';
 
 dotenv.config();
 
+// Créer les dossiers data/ nécessaires au démarrage (Render filesystem éphémère)
+import fs from 'fs';
+import path from 'path';
+const dataDir = path.join(process.cwd(), 'data', 'sessions');
+if (!fs.existsSync(dataDir)) {
+  fs.mkdirSync(dataDir, { recursive: true });
+  console.log('📁 Dossier data/sessions créé');
+}
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
