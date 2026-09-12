@@ -2,6 +2,7 @@ import { Client, Collection, Events, GatewayIntentBits } from 'discord.js';
 import { config, isDeveloper } from './config';
 import { Command } from './types';
 import { loadCommands } from './handlers/commandHandler';
+import { startTwitchMonitor, stopTwitchMonitor } from './services/twitchMonitor';
 import https from 'https';
 import http from 'http';
 
@@ -86,6 +87,9 @@ client.once(Events.ClientReady, (c) => {
   }).catch(() => {
     console.error('⚠️ Impossible de charger les automatisations au démarrage');
   });
+
+  // Démarrer le monitoring Twitch (vérification toutes les 60s)
+  startTwitchMonitor(c, 60_000);
 });
 
 // Événement: Nouveau membre (welcome + autorole)
@@ -334,6 +338,7 @@ process.on('unhandledRejection', (error) => {
 
 process.on('uncaughtException', (error) => {
   console.error('❌ Exception non capturée:', error);
+  stopTwitchMonitor();
   process.exit(1);
 });
 
