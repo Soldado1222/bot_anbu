@@ -115,7 +115,7 @@ export default function Moderation() {
 
   const fetchRoles = async () => {
     try {
-      const res = await axios.get('/api/automations/guild/roles');
+      const res = await axios.get(`/api/moderation/guild/${guildId}/roles`);
       setRoles(res.data);
     } catch { /* silent */ }
   };
