@@ -90,16 +90,27 @@ client.once(Events.ClientReady, (c) => {
 
 // Événement: Nouveau membre (welcome + autorole)
 client.on(Events.GuildMemberAdd, async (member) => {
+  // Forcer rechargement des automatisations (ignorer le cache)
+  lastAutomationsFetch = 0;
+  
   try {
     const automations = await fetchAutomations();
-    
+    console.log(`👤 Nouveau membre: ${member.user.tag} - Automatisations:`, JSON.stringify({
+      welcome: automations.welcome?.enabled,
+      autorole: automations.autorole?.enabled,
+    }));
+
     // Autorole
     if (automations.autorole?.enabled && automations.autorole.roleId) {
       try {
+        // Fetch les rôles si pas en cache
+        await member.guild.roles.fetch();
         const role = member.guild.roles.cache.get(automations.autorole.roleId);
         if (role) {
           await member.roles.add(role);
-          console.log(`✅ Rôle automatique attribué à ${member.user.tag}`);
+          console.log(`✅ Rôle automatique "${role.name}" attribué à ${member.user.tag}`);
+        } else {
+          console.error(`❌ Rôle introuvable: ${automations.autorole.roleId}`);
         }
       } catch (error) {
         console.error('❌ Erreur autorole:', error);
@@ -119,9 +130,9 @@ client.on(Events.GuildMemberAdd, async (member) => {
           if (automations.welcome.embedEnabled) {
             const { EmbedBuilder } = await import('discord.js');
             const embed = new EmbedBuilder()
-              .setTitle(automations.welcome.embedTitle)
+              .setTitle(automations.welcome.embedTitle || 'Bienvenue !')
               .setDescription(message)
-              .setColor(automations.welcome.embedColor)
+              .setColor((automations.welcome.embedColor || '#5865F2') as any)
               .setThumbnail(member.user.displayAvatarURL())
               .setTimestamp();
             await (channel as any).send({ embeds: [embed] });
@@ -141,6 +152,9 @@ client.on(Events.GuildMemberAdd, async (member) => {
 
 // Événement: Membre parti (goodbye)
 client.on(Events.GuildMemberRemove, async (member) => {
+  // Forcer rechargement
+  lastAutomationsFetch = 0;
+
   try {
     const automations = await fetchAutomations();
     

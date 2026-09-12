@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import FileStore from 'session-file-store';
 import passport from 'passport';
 import { Strategy as DiscordStrategy } from 'passport-discord';
 import dotenv from 'dotenv';
@@ -48,15 +49,23 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json());
+
+// Session persistante sur fichier (survit aux redémarrages)
+const SessionFileStore = FileStore(session);
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
+  store: new SessionFileStore({
+    path: './data/sessions',
+    ttl: 7 * 24 * 3600, // 7 jours
+    retries: 1,
+  }),
+  secret: process.env.SESSION_SECRET || 'lanbu-secret-key-prod',
   resave: false,
   saveUninitialized: false,
-  proxy: true, // Important pour Render
+  proxy: true,
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 heures
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
   },
 }));

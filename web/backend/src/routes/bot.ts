@@ -89,6 +89,18 @@ export function createBotRoutes(client: Client) {
     }
   });
 
+  // Obtenir la liste des serveurs du bot
+  router.get('/guilds', async (req, res) => {
+    if (!client.isReady()) return res.status(503).json({ error: 'Bot non connecté' });
+    const guilds = client.guilds.cache.map(g => ({
+      id: g.id,
+      name: g.name,
+      icon: g.iconURL(),
+      memberCount: g.memberCount,
+    }));
+    res.json(guilds);
+  });
+
   // Obtenir la liste des canaux d'un serveur
   router.get('/guilds/:guildId/channels', async (req, res) => {
     if (!client.isReady()) {
