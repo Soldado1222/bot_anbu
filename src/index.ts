@@ -453,14 +453,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (customId === 'ticket:open') {
       const ticketConfig = await fetchTicketConfig();
 
-      if (!ticketConfig.enabled) {
-        await interaction.reply({
-          content: '❌ Le système de tickets est actuellement désactivé.',
-          ephemeral: true,
-        });
-        return;
-      }
-
       // Vérifier la limite de tickets par user
       const openCount = await countUserOpenTickets(guild, user.id);
       if (openCount >= (ticketConfig.maxPerUser || 1)) {
