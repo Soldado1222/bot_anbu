@@ -12,6 +12,7 @@ interface TwitchConfig {
 }
 
 interface TwitchStream {
+  user_id: string;
   user_login: string;
   user_name: string;
   game_name: string;
@@ -19,6 +20,14 @@ interface TwitchStream {
   viewer_count: number;
   thumbnail_url: string;
   started_at: string;
+}
+
+interface TwitchUser {
+  id: string;
+  login: string;
+  display_name: string;
+  profile_image_url: string;
+  description: string;
 }
 
 // ─── Persistance ──────────────────────────────────────────────────────────────
@@ -118,33 +127,67 @@ async function fetchLiveStreams(userLogins: string[]): Promise<TwitchStream[]> {
   return data.data || [];
 }
 
+// Cache des photos de profil pour éviter trop de requêtes
+const profileCache = new Map<string, string>();
+
+async function fetchUserProfiles(userLogins: string[]): Promise<Map<string, TwitchUser>> {
+  if (userLogins.length === 0) return new Map();
+
+  const token = await getTwitchToken();
+  const clientId = process.env.TWITCH_CLIENT_ID!;
+
+  const query = userLogins.map(u => `login=${encodeURIComponent(u)}`).join('&');
+
+  const data = await httpRequest({
+    hostname: 'api.twitch.tv',
+    path: `/helix/users?${query}`,
+    method: 'GET',
+    headers: {
+      'Client-ID': clientId,
+      'Authorization': `Bearer ${token}`,
+    },
+  });
+
+  const map = new Map<string, TwitchUser>();
+  for (const user of (data.data || [])) {
+    map.set(user.login.toLowerCase(), user);
+    profileCache.set(user.login.toLowerCase(), user.profile_image_url);
+  }
+  return map;
+}
+
 // ─── Monitoring ───────────────────────────────────────────────────────────────
 
 // Garde en mémoire les streamers actuellement en live pour éviter les doublons
 const currentlyLive = new Set<string>();
 let monitorInterval: NodeJS.Timeout | null = null;
 
-function buildLiveEmbed(stream: TwitchStream): EmbedBuilder {
+function buildLiveEmbed(stream: TwitchStream, avatarUrl?: string): EmbedBuilder {
   const thumbnail = stream.thumbnail_url
     .replace('{width}', '1280')
     .replace('{height}', '720');
 
+  // Ajouter un timestamp pour éviter le cache Discord sur la miniature
+  const thumbnailNocache = `${thumbnail}?t=${Date.now()}`;
+
   return new EmbedBuilder()
-    .setColor(0x9146FF) // Violet Twitch
+    .setColor(0x9146FF)
     .setAuthor({
-      name: '🔴 Live sur Twitch !',
-      iconURL: 'https://static.twitchskins.com/assets/images/default_profile.png',
+      name: `${stream.user_name} est en live !`,
+      iconURL: avatarUrl || 'https://brand.twitch.tv/assets/images/black.png',
+      url: `https://twitch.tv/${stream.user_login}`,
     })
     .setTitle(stream.title || 'Sans titre')
     .setURL(`https://twitch.tv/${stream.user_login}`)
     .addFields(
-      { name: '👤 Streamer', value: stream.user_name, inline: true },
       { name: '🎮 Jeu', value: stream.game_name || 'Non renseigné', inline: true },
-      { name: '👀 Viewers', value: stream.viewer_count.toString(), inline: true },
+      { name: '👀 Viewers', value: stream.viewer_count.toLocaleString('fr-FR'), inline: true },
+      { name: '🔗 Lien', value: `[Regarder le live](https://twitch.tv/${stream.user_login})`, inline: true },
     )
-    .setImage(thumbnail)
-    .setFooter({ text: `twitch.tv/${stream.user_login}` })
-    .setTimestamp();
+    .setImage(thumbnailNocache)
+    .setThumbnail(avatarUrl || null)
+    .setFooter({ text: `twitch.tv/${stream.user_login} • Live depuis` })
+    .setTimestamp(new Date(stream.started_at));
 }
 
 async function checkStreams(discordClient: Client): Promise<void> {
@@ -155,7 +198,14 @@ async function checkStreams(discordClient: Client): Promise<void> {
     const liveStreams = await fetchLiveStreams(config.channels);
     const liveLogins = new Set(liveStreams.map(s => s.user_login.toLowerCase()));
 
-    // Streamers qui viennent de commencer (pas dans currentlyLive avant)
+    // Récupérer les profils des streamers en live (PP)
+    const newStreamers = liveStreams.filter(s => !currentlyLive.has(s.user_login.toLowerCase()));
+    let profiles = new Map<string, TwitchUser>();
+    if (newStreamers.length > 0) {
+      profiles = await fetchUserProfiles(newStreamers.map(s => s.user_login));
+    }
+
+    // Streamers qui viennent de commencer
     for (const stream of liveStreams) {
       const login = stream.user_login.toLowerCase();
       if (!currentlyLive.has(login)) {
@@ -166,10 +216,15 @@ async function checkStreams(discordClient: Client): Promise<void> {
           const channel = await discordClient.channels.fetch(config.notifyChannelId) as TextChannel;
           if (!channel?.isTextBased()) continue;
 
+          // Récupérer la PP depuis le cache ou le fetch
+          const avatarUrl = profiles.get(login)?.profile_image_url
+            || profileCache.get(login)
+            || undefined;
+
           const mention = config.roleId ? `<@&${config.roleId}> ` : '';
           await channel.send({
-            content: `${mention}**${stream.user_name}** est en live sur Twitch ! 🔴`,
-            embeds: [buildLiveEmbed(stream)],
+            content: `${mention}🔴 **${stream.user_name}** est maintenant en live sur Twitch !`,
+            embeds: [buildLiveEmbed(stream, avatarUrl)],
           });
         } catch (err) {
           console.error(`❌ Erreur envoi notif Twitch pour ${stream.user_name}:`, err);
